@@ -23,6 +23,7 @@ https://ghost-instagram-story-mention-extra.vercel.app/
    - A **detailed list** of each story
    - The **accounts mentioned**
    - A **direct link** to the story's media file
-  
-Work only For Highlight
+  Work only For Highlight
+## **Coming soon**
+Work for Active Story 
 #
