@@ -2,6 +2,7 @@
 
 ## Look like you need Detective 🕵️‍♂️
 https://ghost-instagram-story-mention-extra.vercel.app/
+Work only for Highlight Only
 # Use Ghost Extractor
 ## How to Use
 
