@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instagram Story Mention Extractor</title>
+  <style>
+    /* Light Mode (Default) */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #fafafa;
+      color: #262626;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+    h1 {
+      text-align: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    button, .custom-upload-button {
+      padding: 10px 15px;
+      font-size: 14px;
+      font-weight: 600;
+      background-color: #0095f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      white-space: nowrap;
+    }
+    button:hover, .custom-upload-button:hover {
+      background-color: #0077c6;
+    }
+    #fileNameDisplay {
+      flex-grow: 1;
+      margin: 0 10px;
+      font-style: italic;
+      color: #8e8e8e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+    .summary {
+      padding: 15px;
+      background-color: #f0f2f5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      transition: background-color 0.3s;
+    }
+    .story-item {
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      transition: border-color 0.3s;
+    }
+    .story-header {
+      font-weight: 600;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .media-link a {
+      color: #00376b;
+      text-decoration: none;
+      word-break: break-word;
+    }
+    .media-link a:hover {
+      text-decoration: underline;
+    }
+    .mention-list {
+      margin-top: 10px;
+      padding-left: 20px;
+    }
+    .mention-item {
+      background-color: #efefef;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      display: inline-block;
+      transition: background-color 0.3s;
+    }
+    .no-mentions {
+      color: #8e8e8e;
+      font-style: italic;
+    }
+
+    /* Dark Mode Styles */
+    body.dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    body.dark-mode .container {
+      background-color: #1e1e1e;
+      border-color: #363636;
+    }
+    body.dark-mode .summary {
+      background-color: #2c2c2c;
+    }
+    body.dark-mode .story-item {
+      border-color: #363636;
+    }
+    body.dark-mode .media-link a {
+      color: #ff5858;
+    }
+    body.dark-mode .mention-item {
+      background-color: #3a3a3a;
+      color: #e0e0e0;
+    }
+    body.dark-mode .no-mentions, body.dark-mode #fileNameDisplay {
+      color: #a0a0a0;
+    }
+
+    /* Dark Mode Toggle Button */
+    #darkModeToggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: #f0f2f5;
+        color: #262626;
+        border: 1px solid #dbdbdb;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+    body.dark-mode #darkModeToggle {
+        background-color: #2c2c2c;
+        color: #e0e0e0;
+        border: 1px solid #363636;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="darkModeToggle">🌙</button>
+    <h1>Ghost Instagram Story Mention Extractor</h1>
+    <div class="controls">
+      <input type="file" id="fileInput" accept=".html,.txt" style="display: none;"/>
+      <button id="customUploadButton" class="custom-upload-button">Upload Your Evidence</button>
+      <span id="fileNameDisplay">No Evidence selected</span>
+      <button id="processButton">GO</button>
+    </div>
+    <div id="summary"></div>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    // --- Custom File Upload Button Logic ---
+    const fileInput = document.getElementById('fileInput');
+    const customUploadButton = document.getElementById('customUploadButton');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    customUploadButton.addEventListener('click', () => {
+        fileInput.click(); // Trigger the hidden file input
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.textContent = fileInput.files[0].name;
+        } else {
+            fileNameDisplay.textContent = 'No file selected';
+        }
+    });
+
+    // --- Dark Mode Logic ---
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const body = document.body;
+
+    const setDarkMode = (isDark) => {
+        if (isDark) {
+            body.classList.add('dark-mode');
+            darkModeToggle.textContent = '☀️';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            body.classList.remove('dark-mode');
+            darkModeToggle.textContent = '🌙';
+            localStorage.setItem('theme', 'light');
+        }
+    };
+
+    darkModeToggle.addEventListener('click', () => {
+        setDarkMode(!body.classList.contains('dark-mode'));
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            setDarkMode(true);
+        } else {
+            setDarkMode(false);
+        }
+    });
+
+    // --- Original File Processing Logic ---
+    function extractBalancedJson(text, key) {
+      const startIndex = text.indexOf(`"${key}":`);
+      if (startIndex === -1) return null;
+      const braceStart = text.indexOf('{', startIndex);
+      if (braceStart === -1) return null;
+      let braceCount = 0;
+      let endIndex = braceStart;
+      while (endIndex < text.length) {
+        if (text[endIndex] === '{') braceCount++;
+        else if (text[endIndex] === '}') braceCount--;
+        if (braceCount === 0) break;
+        endIndex++;
+      }
+      return text.slice(braceStart, endIndex + 1);
+    }
+
+    document.getElementById('processButton').addEventListener('click', () => {
+      const summaryDiv = document.getElementById('summary');
+      const resultsDiv = document.getElementById('results');
+
+      summaryDiv.innerHTML = '';
+      resultsDiv.innerHTML = 'กำลังประมวลผล...';
+
+      if (fileInput.files.length === 0) {
+        resultsDiv.innerHTML = '<p style="color: red;">กรุณาเลือกไฟล์ก่อนครับ</p>';
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(event) {
+        const fileContent = event.target.result;
+        try {
+          const rawJson = extractBalancedJson(fileContent, "xdt_api__v1__feed__reels_media__connection");
+          if (!rawJson) {
+            throw new Error("ไม่พบข้อมูลสตอรี่ หรือรูปแบบ JSON ไม่สมบูรณ์");
+          }
+
+          const storyData = JSON.parse(rawJson);
+          const items = storyData.edges?.[0]?.node?.items || [];
+          let totalStories = items.length;
+          let totalMentions = 0;
+          let resultsHtml = '';
+
+          items.forEach((story, index) => {
+            const storyId = story.pk || 'N/A';
+            let mediaUrl = 'ไม่พบ URL';
+
+            if (story.image_versions2?.candidates?.length > 0) {
+              mediaUrl = story.image_versions2.candidates[0].url;
+            } else if (story.video_versions?.length > 0) {
+              mediaUrl = story.video_versions[0].url;
+            }
+
+            const mentions = [];
+            if (Array.isArray(story.story_bloks_stickers)) {
+              story.story_bloks_stickers.forEach(sticker => {
+                const mention = sticker?.bloks_sticker?.sticker_data?.ig_mention;
+                if (mention) {
+                  mentions.push(mention);
+                  totalMentions++;
+                }
+              });
+            }
+
+            resultsHtml += `<div class="story-item"><div class="story-header"><strong>สตอรี่ที่ ${index + 1}</strong> (ID: ${storyId})</div><div class="media-link"><a href="${mediaUrl}" target="_blank" rel="noopener noreferrer">ลิงก์ไฟล์ Media</a></div><strong>Mentions (${mentions.length} ครั้ง):</strong>`;
+            if (mentions.length > 0) {
+              resultsHtml += '<ul class="mention-list">';
+              mentions.forEach(mention => {
+                resultsHtml += `<li><span class="mention-item"><strong>${mention.full_name || '(ไม่มีชื่อ)'}</strong> (@${mention.username})</span></li>`;
+              });
+              resultsHtml += '</ul>';
+            } else {
+              resultsHtml += '<p class="no-mentions">ไม่พบ Mention ในสตอรี่นี้</p>';
+            }
+            resultsHtml += '</div>';
+          });
+
+          summaryDiv.innerHTML = `<h3>ผลการวิเคราะห์</h3><p><strong>จำนวนสตอรี่ทั้งหมด:</strong> ${totalStories} | <strong>จำนวน Mentions ทั้งหมด:</strong> ${totalMentions}</p>`;
+          resultsDiv.innerHTML = resultsHtml;
+
+        } catch (error) {
+          summaryDiv.innerHTML = '';
+          resultsDiv.innerHTML = `<p style="color: red;">เกิดข้อผิดพลาด: ${error.message}</p><p>โปรดตรวจสอบว่าเป็นไฟล์ที่บันทึกมาจากหน้า Instagram Story Highlight ที่โหลดข้อมูลสมบูรณ์แล้ว</p>`;
+          console.error(error);
+        }
+      };
+
+      reader.onerror = function() {
+        resultsDiv.innerHTML = '<p style="color: red;">ไม่สามารถอ่านไฟล์ได้</p>';
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
