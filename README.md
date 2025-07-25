@@ -1,4 +1,4 @@
-# Ghost Instagram Story Mention Extractor
+# Ghost Instagram Highlight Story Mention Extractor
 
 ## Look like you need Detective 🕵️‍♂️
 
@@ -23,4 +23,6 @@
    - A **detailed list** of each story
    - The **accounts mentioned**
    - A **direct link** to the story's media file
+  
+Work only For Highlight
 #
