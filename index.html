@@ -248,6 +248,22 @@
         element.textContent = element.getAttribute(`data-${lang}`);
       });
       
+      // Update file name display if no file is selected
+      if (fileInput.files.length === 0) {
+        fileNameDisplay.textContent = lang === 'en' ? 'No Evidence selected' : 'ยังไม่ได้เลือกไฟล์';
+      }
+      
+      // Re-render results if they exist to update language
+      const resultsDiv = document.getElementById('results');
+      const summaryDiv = document.getElementById('summary');
+      if (resultsDiv.innerHTML && resultsDiv.innerHTML !== translations[currentLanguage].processing && !resultsDiv.innerHTML.includes('color: red')) {
+        // If there are results displayed, trigger a re-render with new language
+        const processButton = document.getElementById('processButton');
+        if (fileInput.files.length > 0) {
+          processButton.click();
+        }
+      }
+      
       localStorage.setItem('language', lang);
     };
     
