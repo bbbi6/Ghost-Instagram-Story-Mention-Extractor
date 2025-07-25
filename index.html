@@ -339,6 +339,83 @@
       return text.slice(braceStart, endIndex + 1);
     }
 
+    function tryMultipleExtractionMethods(fileContent) {
+      // Method 1: Original pattern for highlights
+      let rawJson = extractBalancedJson(fileContent, "xdt_api__v1__feed__reels_media__connection");
+      if (rawJson) {
+        try {
+          const storyData = JSON.parse(rawJson);
+          const items = storyData.edges?.[0]?.node?.items || [];
+          if (items.length > 0) {
+            return { data: storyData, items: items, method: 'highlights' };
+          }
+        } catch (e) {
+          console.log('Method 1 failed:', e);
+        }
+      }
+
+      // Method 2: Try different API endpoint patterns
+      const apiPatterns = [
+        "xdt_api__v1__feed__reels_tray__connection",
+        "xdt_api__v1__feed__user_story__connection",
+        "xdt_api__v1__media__info__connection",
+        "xdt_api__v1__feed__timeline__connection"
+      ];
+
+      for (const pattern of apiPatterns) {
+        rawJson = extractBalancedJson(fileContent, pattern);
+        if (rawJson) {
+          try {
+            const storyData = JSON.parse(rawJson);
+            // Try different data structures
+            let items = storyData.edges?.[0]?.node?.items || 
+                       storyData.data?.reels_media?.[0]?.items ||
+                       storyData.data?.user?.story?.items ||
+                       storyData.items ||
+                       [];
+            if (items.length > 0) {
+              return { data: storyData, items: items, method: pattern };
+            }
+          } catch (e) {
+            console.log(`Method ${pattern} failed:`, e);
+          }
+        }
+      }
+
+      // Method 3: Search for any JSON with story-like structure
+      const jsonRegex = /"items":\s*\[\s*\{[^}]*"pk":/g;
+      let match;
+      while ((match = jsonRegex.exec(fileContent)) !== null) {
+        try {
+          // Find the complete JSON object containing this items array
+          let startPos = match.index;
+          while (startPos > 0 && fileContent[startPos] !== '{') {
+            startPos--;
+          }
+          
+          let braceCount = 0;
+          let endPos = startPos;
+          while (endPos < fileContent.length) {
+            if (fileContent[endPos] === '{') braceCount++;
+            else if (fileContent[endPos] === '}') braceCount--;
+            if (braceCount === 0) break;
+            endPos++;
+          }
+          
+          const jsonStr = fileContent.slice(startPos, endPos + 1);
+          const parsed = JSON.parse(jsonStr);
+          const items = parsed.items || [];
+          if (items.length > 0 && items[0].pk) {
+            return { data: parsed, items: items, method: 'generic_search' };
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      return null;
+    }
+
     document.getElementById('processButton').addEventListener('click', () => {
       const summaryDiv = document.getElementById('summary');
       const resultsDiv = document.getElementById('results');
@@ -357,13 +434,14 @@
       reader.onload = function(event) {
         const fileContent = event.target.result;
         try {
-          const rawJson = extractBalancedJson(fileContent, "xdt_api__v1__feed__reels_media__connection");
-          if (!rawJson) {
+          const extractionResult = tryMultipleExtractionMethods(fileContent);
+          if (!extractionResult) {
             throw new Error(translations[currentLanguage].noStoryData);
           }
 
-          const storyData = JSON.parse(rawJson);
-          const items = storyData.edges?.[0]?.node?.items || [];
+          const { data: storyData, items, method } = extractionResult;
+          console.log(`Successfully extracted data using method: ${method}`);
+          
           let totalStories = items.length;
           let totalMentions = 0;
           let resultsHtml = '';
@@ -372,16 +450,30 @@
             const storyId = story.pk || 'N/A';
             let mediaUrl = translations[currentLanguage].noUrl;
 
+            // Try multiple ways to get media URL
             if (story.image_versions2?.candidates?.length > 0) {
               mediaUrl = story.image_versions2.candidates[0].url;
             } else if (story.video_versions?.length > 0) {
               mediaUrl = story.video_versions[0].url;
+            } else if (story.media?.image_versions2?.candidates?.length > 0) {
+              mediaUrl = story.media.image_versions2.candidates[0].url;
+            } else if (story.media?.video_versions?.length > 0) {
+              mediaUrl = story.media.video_versions[0].url;
             }
 
             const mentions = [];
-            if (Array.isArray(story.story_bloks_stickers)) {
-              story.story_bloks_stickers.forEach(sticker => {
-                const mention = sticker?.bloks_sticker?.sticker_data?.ig_mention;
+            
+            // Try multiple ways to find mentions
+            const stickersArray = story.story_bloks_stickers || 
+                                story.story_stickers || 
+                                story.stickers || 
+                                [];
+                                
+            if (Array.isArray(stickersArray)) {
+              stickersArray.forEach(sticker => {
+                const mention = sticker?.bloks_sticker?.sticker_data?.ig_mention ||
+                               sticker?.mention_sticker?.user ||
+                               sticker?.user;
                 if (mention) {
                   mentions.push(mention);
                   totalMentions++;
