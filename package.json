@@ -1,0 +1,14 @@
+{
+  "name": "ghost-instagram-highlight-extractor",
+  "version": "1.0.0",
+  "description": "Instagram Story Highlight Mention Extractor",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
