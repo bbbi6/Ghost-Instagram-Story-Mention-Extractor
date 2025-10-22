@@ -347,6 +347,8 @@
           const storyData = JSON.parse(rawJson);
           const items = storyData.edges?.[0]?.node?.items || [];
           if (items.length > 0) {
+            console.log('Found data with Method 1 (highlights):', items.length, 'items');
+            console.log('Sample item structure:', JSON.stringify(items[0], null, 2));
             return { data: storyData, items: items, method: 'highlights' };
           }
         } catch (e) {
@@ -354,7 +356,13 @@
         }
       }
 
-      // Method 2: Try different API endpoint patterns
+      // Method 2: Search for ig_mention directly in the file
+      const igMentionRegex = /"ig_mention":\s*\{[^}]*"username":/g;
+      if (igMentionRegex.test(fileContent)) {
+        console.log('Found ig_mention patterns in file, attempting extraction...');
+      }
+
+      // Method 3: Try different API endpoint patterns
       const apiPatterns = [
         "xdt_api__v1__feed__reels_tray__connection",
         "xdt_api__v1__feed__user_story__connection",
@@ -368,12 +376,13 @@
           try {
             const storyData = JSON.parse(rawJson);
             // Try different data structures
-            let items = storyData.edges?.[0]?.node?.items || 
+            let items = storyData.edges?.[0]?.node?.items ||
                        storyData.data?.reels_media?.[0]?.items ||
                        storyData.data?.user?.story?.items ||
                        storyData.items ||
                        [];
             if (items.length > 0) {
+              console.log(`Found data with pattern ${pattern}:`, items.length, 'items');
               return { data: storyData, items: items, method: pattern };
             }
           } catch (e) {
@@ -382,7 +391,7 @@
         }
       }
 
-      // Method 3: Search for any JSON with story-like structure
+      // Method 4: Search for any JSON with story-like structure
       const jsonRegex = /"items":\s*\[\s*\{[^}]*"pk":/g;
       let match;
       while ((match = jsonRegex.exec(fileContent)) !== null) {
@@ -392,7 +401,7 @@
           while (startPos > 0 && fileContent[startPos] !== '{') {
             startPos--;
           }
-          
+
           let braceCount = 0;
           let endPos = startPos;
           while (endPos < fileContent.length) {
@@ -401,11 +410,12 @@
             if (braceCount === 0) break;
             endPos++;
           }
-          
+
           const jsonStr = fileContent.slice(startPos, endPos + 1);
           const parsed = JSON.parse(jsonStr);
           const items = parsed.items || [];
           if (items.length > 0 && items[0].pk) {
+            console.log('Found data with generic search:', items.length, 'items');
             return { data: parsed, items: items, method: 'generic_search' };
           }
         } catch (e) {
@@ -413,6 +423,7 @@
         }
       }
 
+      console.error('No story data found in any extraction method');
       return null;
     }
 
@@ -469,21 +480,38 @@
                                 story.stickers ||
                                 [];
 
+            if (index === 0) {
+              console.log('Story structure for first item:', {
+                has_story_bloks_stickers: !!story.story_bloks_stickers,
+                has_story_stickers: !!story.story_stickers,
+                has_stickers: !!story.stickers,
+                stickers_array_length: Array.isArray(stickersArray) ? stickersArray.length : 0
+              });
+              if (Array.isArray(stickersArray) && stickersArray.length > 0) {
+                console.log('First sticker structure:', JSON.stringify(stickersArray[0], null, 2));
+              }
+            }
+
             if (Array.isArray(stickersArray)) {
-              stickersArray.forEach(sticker => {
+              stickersArray.forEach((sticker, stickerIndex) => {
                 // Primary: Check for ig_mention in various locations
                 let mention = null;
 
                 if (sticker?.bloks_sticker?.sticker_data?.ig_mention) {
                   mention = sticker.bloks_sticker.sticker_data.ig_mention;
+                  if (index === 0 && stickerIndex === 0) console.log('Found mention via bloks_sticker.sticker_data.ig_mention');
                 } else if (sticker?.sticker_data?.ig_mention) {
                   mention = sticker.sticker_data.ig_mention;
+                  if (index === 0 && stickerIndex === 0) console.log('Found mention via sticker_data.ig_mention');
                 } else if (sticker?.ig_mention) {
                   mention = sticker.ig_mention;
+                  if (index === 0 && stickerIndex === 0) console.log('Found mention via ig_mention');
                 } else if (sticker?.mention_sticker?.user) {
                   mention = sticker.mention_sticker.user;
+                  if (index === 0 && stickerIndex === 0) console.log('Found mention via mention_sticker.user');
                 } else if (sticker?.user) {
                   mention = sticker.user;
+                  if (index === 0 && stickerIndex === 0) console.log('Found mention via user');
                 }
 
                 if (mention && mention.username) {
