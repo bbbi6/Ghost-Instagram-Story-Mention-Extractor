@@ -462,19 +462,41 @@
             }
 
             const mentions = [];
-            
-            // Try multiple ways to find mentions
-            const stickersArray = story.story_bloks_stickers || 
-                                story.story_stickers || 
-                                story.stickers || 
+
+            // Try multiple ways to find mentions - prioritize ig_mention
+            const stickersArray = story.story_bloks_stickers ||
+                                story.story_stickers ||
+                                story.stickers ||
                                 [];
-                                
+
             if (Array.isArray(stickersArray)) {
               stickersArray.forEach(sticker => {
-                const mention = sticker?.bloks_sticker?.sticker_data?.ig_mention ||
-                               sticker?.mention_sticker?.user ||
-                               sticker?.user;
-                if (mention) {
+                // Primary: Check for ig_mention in various locations
+                let mention = null;
+
+                if (sticker?.bloks_sticker?.sticker_data?.ig_mention) {
+                  mention = sticker.bloks_sticker.sticker_data.ig_mention;
+                } else if (sticker?.sticker_data?.ig_mention) {
+                  mention = sticker.sticker_data.ig_mention;
+                } else if (sticker?.ig_mention) {
+                  mention = sticker.ig_mention;
+                } else if (sticker?.mention_sticker?.user) {
+                  mention = sticker.mention_sticker.user;
+                } else if (sticker?.user) {
+                  mention = sticker.user;
+                }
+
+                if (mention && mention.username) {
+                  mentions.push(mention);
+                  totalMentions++;
+                }
+              });
+            }
+
+            // Also check for mentions directly in story object
+            if (story.ig_mentions && Array.isArray(story.ig_mentions)) {
+              story.ig_mentions.forEach(mention => {
+                if (mention && mention.username) {
                   mentions.push(mention);
                   totalMentions++;
                 }
